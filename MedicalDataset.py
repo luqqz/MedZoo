@@ -2,19 +2,28 @@ import os
 import numpy
 import nibabel
 
-from torch.utils import data
+from enum import Enum
 
-_image_target_size = (256, 256, 64)
+_image_target_size = (128, 128, 64) # W x H x D
 _min_hu = -325
 _max_hu = 325
 
-class MedicalDataset(data.Dataset):
+class Organ(Enum):
+    KIDNEY = "kidney"
+    LIVER = "liver"
+    SPLEEN = "spleen"
 
-    def __init__(self, root_dir):
-        self.root_dir = root_dir
+class DataType(Enum):
+    IMAGE = "image"
+    MASK = "mask"
+
+class MedicalDataset:
+
+    def __init__(self, data_root_dir='data/'):
+        self.data_root_dir = data_root_dir
         self.files = []
-        dirs, files = os.walk(self.root_dir)
-        for root, dirs, files in os.walk(root_dir, topdown=False):
+        dirs, files = os.walk(self.data_root_dir)
+        for root, dirs, files in os.walk(self.data_root_dir, topdown=False):
             for name in files:
                 if 'segmentation' in name and (name.endswith('.nii') or name.endswith('.nii.gz')):
                     path = os.path.join(root, name)
