@@ -74,7 +74,7 @@ def rename_and_move(data_root_dir='data/'):
                     shutil.move(os.path.join(root, file), os.path.join(_final_data_path, Organ.SPLEEN.value, 'train', str(index) + file.replace('spleen_' + str(index), '_spleen_ct')))
                     shutil.move(os.path.join(root, file).replace('imagesTr', 'labelsTr'), os.path.join(_final_data_path, Organ.SPLEEN.value, 'train', str(index) + file.replace('spleen_' + str(index), '_spleen_mask')))
                 elif 'imagesTs' in root:
-                    shutil.move(os.path.join(root, file), os.path.join(_final_data_path, Organ.SPLEEN.value, 'test', str(index) + file.replace('spleen_', '_spleen_ct')))
+                    shutil.move(os.path.join(root, file), os.path.join(_final_data_path, Organ.SPLEEN.value, 'test', str(index) + file.replace('spleen_' + str(index), '_spleen_ct')))
 
 def respace():
     check_and_create_data_dirs(_final_data_processed_path)
