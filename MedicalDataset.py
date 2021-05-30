@@ -1,4 +1,5 @@
 import os
+from batchgenerators import transforms
 import numpy
 import math
 import nibabel
@@ -10,7 +11,7 @@ from utils.edatatype import DataType
 from utils.eorgan import Organ
 
 _final_data_processed_path = 'data_final_processed/'
-_image_target_size = [128, 128, 64] # H x W x D
+_image_target_size = [192, 192, 64] # H x W x D
 _min_hu = -325
 _max_hu = 325
 
@@ -21,24 +22,26 @@ class MedicalDataset:
         self.crop_to_mask = crop_to_mask
         self.transform = transform
         self.files = []
+        self.boundaries = {}
 
         for root, _, files in os.walk(data_root_dir):
-            for file in files:
-                if 'ct' in file:
-                    image_path = os.path.join(root, file)
-                    mask_path = image_path.replace('ct', 'mask')
-                    if Organ.KIDNEY.value in file:
-                        task = Organ.KIDNEY
-                    elif Organ.LIVER.value in file:
-                        task = Organ.LIVER
-                    elif Organ.SPLEEN.value in file:
-                        task = Organ.SPLEEN
-                        
-                    self.files.append({
-                        'image_path': image_path,
-                        'mask_path': mask_path,
-                        'task': task
-                    })
+            if 'train' in root:
+                for file in files:
+                    if 'ct' in file:
+                        image_path = os.path.join(root, file)
+                        mask_path = image_path.replace('ct', 'mask')
+                        if Organ.KIDNEY.value in file:
+                            task = Organ.KIDNEY
+                        elif Organ.LIVER.value in file:
+                            task = Organ.LIVER
+                        elif Organ.SPLEEN.value in file:
+                            task = Organ.SPLEEN
+
+                        self.files.append({
+                            'image_path': image_path,
+                            'mask_path': mask_path,
+                            'task': task
+                        })
 
     def normalize(self, image):
         image[numpy.where(image < _min_hu)] = _min_hu
@@ -57,23 +60,43 @@ class MedicalDataset:
 
         return numpy.pad(ct_image, ((0, missing_rows), (0, missing_cols), (0, missing_slices)), 'constant')
 
-    def locate_boundaries(self, mask):
+    def locate_boundaries(self, mask, index):
         img_d, img_h, img_w = mask.shape
-        boundary_d, boundary_h, boundary_w = numpy.where(mask >= 1)
-        margin = 32
+        margin = 16
 
-        boundary_h_min = boundary_h.min()
-        boundary_h_max = boundary_h.max()
-        boundary_w_min = boundary_w.min()
-        boundary_w_max = boundary_w.max()
-        boundary_d_min = boundary_d.min()
-        boundary_d_max = boundary_d.max()
+        if index in self.boundaries.keys():
+            boundaries = self.boundaries[index]
 
-        if (boundary_h_max - boundary_h_min) <= self.target_size[0]:
+            boundary_h_min = boundaries[0]
+            boundary_h_max = boundaries[1]
+            boundary_w_min = boundaries[2]
+            boundary_w_max = boundaries[3]
+            boundary_d_min = boundaries[4]
+            boundary_d_max = boundaries[5]
+        if not index in self.boundaries.keys():
+            boundary_d, boundary_h, boundary_w = numpy.where(mask >= 1)
+
+            boundary_h_min = boundary_h.min()
+            boundary_h_max = boundary_h.max()
+            boundary_w_min = boundary_w.min()
+            boundary_w_max = boundary_w.max()
+            boundary_d_min = boundary_d.min()
+            boundary_d_max = boundary_d.max()
+
+            self.boundaries[index] = (
+                boundary_h_min,
+                boundary_h_max,
+                boundary_w_min,
+                boundary_w_max,
+                boundary_d_min,
+                boundary_d_max
+            )
+
+        if (boundary_h_max - boundary_h_min) < self.target_size[0]:
             missing = self.target_size[0] - (boundary_h_max - boundary_h_min)
-            missing_min = missing / 2
+            missing_min = missing // 2
             if missing % 2 == 0:
-                missing_max = (missing / 2) + 1
+                missing_max = (missing // 2) + 1
             else:
                 missing_max = missing_min
 
@@ -83,11 +106,11 @@ class MedicalDataset:
                 boundary_h_min = 0
                 boundary_h_max = numpy.min(self.target_size[0], img_h)
 
-        if (boundary_w_max - boundary_w_min) <= self.target_size[1]:
+        if (boundary_w_max - boundary_w_min) < self.target_size[1]:
             missing = self.target_size[1] - (boundary_w_max - boundary_w_min)
-            missing_min = missing / 2
+            missing_min = missing // 2
             if missing % 2 == 0:
-                missing_max = (missing / 2) + 1
+                missing_max = (missing // 2) + 1
             else:
                 missing_max = missing_min
 
@@ -97,11 +120,11 @@ class MedicalDataset:
                 boundary_w_min = 0
                 boundary_w_max = numpy.min(self.target_size[1], img_w)
 
-        if (boundary_d_max - boundary_d_min) <= self.target_size[2]:
+        if (boundary_d_max - boundary_d_min) < self.target_size[2]:
             missing = self.target_size[2] - (boundary_d_max - boundary_d_min)
-            missing_min = missing / 2
+            missing_min = missing // 2
             if missing % 2 == 0:
-                missing_max = (missing / 2) + 1
+                missing_max = (missing // 2) + 1
             else:
                 missing_max = missing_min
 
@@ -118,7 +141,7 @@ class MedicalDataset:
         boundary_d_target_min = numpy.max([boundary_d_min - margin, 0])
         boundary_d_target_max = numpy.min([boundary_d_max + margin, img_d])
 
-        if random.random() < 0.8:
+        if random.random() < 0.9:
             h0 = random.randint(
                 boundary_h_target_min,
                 numpy.max([boundary_h_target_max - self.target_size[0], boundary_h_target_min])
@@ -210,10 +233,10 @@ class MedicalDataset:
         mask_data = self.add_padding(mask_data, self.target_size)
 
         if Organ.KIDNEY.value not in item['image_path']:
-            image_data = image_data.transpose((0, 3, 2, 1))
-            mask_data = mask_data.transpose((0, 3, 2, 1))
+            image_data = image_data.transpose((2, 1, 0))
+            mask_data = mask_data.transpose((2, 1, 0))
 
-        height, width, depth = self.locate_boundaries(mask_data)
+        height, width, depth = self.locate_boundaries(mask_data, index)
         image_data = image_data[depth[0]:depth[1], height[0]: height[1], width[0]: width[1]]
         mask_data = mask_data[depth[0]:depth[1], height[0]: height[1], width[0]: width[1]]
 
@@ -226,17 +249,36 @@ class MedicalDataset:
 
         return image_data.copy().astype(numpy.float32), mask_data.copy().astype(numpy.float32), task
 
-a = MedicalDataset()
-img, mask, _ = a[0]
-import matplotlib.pyplot as plt
+    def get_generator(self):
+        while True:
+            shuffled_list = list(range(len(self.files)))
+            random.shuffle(shuffled_list)
 
-plt.subplot(1,3,1)
-plt.imshow(mask[0,32,:, :])
-plt.subplot(1,3,2)
-plt.imshow(img[0,32,:, :])
-data_dict = {'data': img}
-tr = a.get_transforms()
-b = tr(**data_dict)
-plt.subplot(1,3,3)
-plt.imshow(b['data'][0,32,:, :])
-plt.show()
+            for i in range(len(shuffled_list)):
+                image, mask, task = self.__getitem__(shuffled_list[i])
+                image = image[0, :, :, :]
+                mask = mask[0, :, :, :]
+                data = {
+                    'data': image,
+                    'mask': mask,
+                    'task': task
+                    }
+                transforms = self.get_transforms()
+                data = transforms(**data)
+
+                yield data
+
+#
+# use example
+#
+
+# a = MedicalDataset()
+# import matplotlib.pyplot as plt
+
+# for ex in a.get_generator():
+#     plt.subplot(1, 2, 1)
+#     plt.imshow(ex['data'][32, :, :])
+#
+#     plt.subplot(1,2,2)
+#     plt.imshow(ex['mask'][32, :, :])
+#     plt.show()
