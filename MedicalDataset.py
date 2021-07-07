@@ -1,5 +1,4 @@
 import os
-from batchgenerators import transforms
 import numpy
 import math
 import nibabel
@@ -7,13 +6,13 @@ import random
 
 from batchgenerators.transforms import *
 
-from utils.edatatype import DataType
-from utils.eorgan import Organ
+from types.edatatype import DataType
+from types.eorgan import Organ
 
-_final_data_processed_path = 'data_final_processed/'
+_final_data_processed_path = 'E:/Studia/MGR/MedZoo/data_final_processed/'
 _image_target_size = [192, 192, 64] # H x W x D
-_min_hu = -325
-_max_hu = 325
+_min_hu = -250
+_max_hu = 250
 
 class MedicalDataset:
 
@@ -253,8 +252,10 @@ class MedicalDataset:
         while True:
             shuffled_list = list(range(len(self.files)))
             random.shuffle(shuffled_list)
+            print('start')
 
             for i in range(len(shuffled_list)):
+                print('data')
                 image, mask, task = self.__getitem__(shuffled_list[i])
                 image = image[0, :, :, :]
                 mask = mask[0, :, :, :]
@@ -266,7 +267,7 @@ class MedicalDataset:
                 transforms = self.get_transforms()
                 data = transforms(**data)
 
-                yield data
+                yield (data['data'], data['mask'])
 
 #
 # use example

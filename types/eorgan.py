@@ -4,3 +4,4 @@ class Organ(Enum):
     KIDNEY = "kidney"
     LIVER = "liver"
     SPLEEN = "spleen"
+    BTCV = "btcv"

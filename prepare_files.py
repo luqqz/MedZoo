@@ -49,6 +49,9 @@ def check_and_create_data_dirs(data_path):
         os.makedirs(os.path.join(data_path, Organ.SPLEEN.value))
         os.makedirs(os.path.join(data_path, Organ.SPLEEN.value, 'train'))
         os.makedirs(os.path.join(data_path, Organ.SPLEEN.value, 'test'))
+    if not os.path.exists(os.path.join(data_path, Organ.BTCV.value)):
+        os.makedirs(os.path.join(data_path, Organ.BTCV.value))
+        os.makedirs(os.path.join(data_path, Organ.BTCV.value, 'test'))
 
 def rename_and_move(data_root_dir='data/'):
     check_and_create_data_dirs(_final_data_path)
@@ -75,6 +78,13 @@ def rename_and_move(data_root_dir='data/'):
                     shutil.move(os.path.join(root, file).replace('imagesTr', 'labelsTr'), os.path.join(_final_data_path, Organ.SPLEEN.value, 'train', str(index) + file.replace('spleen_' + str(index), '_spleen_mask')))
                 elif 'imagesTs' in root:
                     shutil.move(os.path.join(root, file), os.path.join(_final_data_path, Organ.SPLEEN.value, 'test', str(index) + file.replace('spleen_' + str(index), '_spleen_ct')))
+            elif 'BTCV' in root:
+                index = file[3:-7]
+                if 'img' in root:
+                    shutil.move(os.path.join(root, file), os.path.join(_final_data_path, Organ.BTCV.value, 'test', str(index) + file.replace('img' + str(index), '_btcv_ct')))
+                    mask = file.replace('img', 'label')
+                    mask_root = root.replace('img', 'label')
+                    shutil.move(os.path.join(mask_root, mask), os.path.join(_final_data_path, Organ.BTCV.value, 'test', str(index) + mask.replace('label' + str(index), '_btcv_mask')))
 
 def respace():
     check_and_create_data_dirs(_final_data_processed_path)
@@ -104,6 +114,8 @@ def respace():
                     task = Organ.LIVER
                 elif Organ.SPLEEN.value in file:
                     task = Organ.SPLEEN
+                elif Organ.BTCV.value in file:
+                    task = Organ.BTCV
                 else:
                     print("Task not supported, continue...")
                     continue
