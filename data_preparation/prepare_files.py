@@ -1,11 +1,12 @@
-import os
 import numpy
 import shutil
 import skimage.transform
 import SimpleITK
 
-from utils.edatatype import DataType
-from utils.eorgan import Organ
+import os, sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from enums.datatype import DataType
+from enums.organ import Organ
 
 NIFTI_extension = '.nii'
 _final_data_path = 'data_final/'
@@ -95,7 +96,7 @@ def respace():
                 print("Processing: %s" % file)
                 file_path = os.path.join(root, file)
                 target_file_path = file_path.replace(_final_data_path, _final_data_processed_path)
-                
+
                 if os.path.exists(target_file_path):
                     print("File already exists, continue...")
                     continue
@@ -110,6 +111,13 @@ def respace():
 
                 if Organ.KIDNEY.value in file:
                     task = Organ.KIDNEY
+                    array_image = array_image.transpose((2, 1, 0))
+                    size = numpy.array([size[2], size[1], size[0]])
+                    spacing = numpy.array([spacing[2], spacing[1], spacing[0]])
+                    origin = tuple([origin[2], origin[1], origin[0]])
+                    order = [6, 7, 8, 3, 4, 5, 0, 1, 2]
+                    old_direction = direction
+                    direction = tuple([old_direction[i] for i in order])
                 elif Organ.LIVER.value in file:
                     task = Organ.LIVER
                 elif Organ.SPLEEN.value in file:

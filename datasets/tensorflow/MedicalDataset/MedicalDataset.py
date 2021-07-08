@@ -1,3 +1,6 @@
+"""MedicalDataset dataset."""
+
+import tensorflow_datasets as tfds
 import os
 import numpy
 import math
@@ -7,13 +10,14 @@ import cv2
 
 from batchgenerators.transforms import *
 
-from types.edatatype import DataType
-from types.eorgan import Organ
+from enums.datatype import DataType
+from enums.organ import Organ
 
 _final_data_processed_path = 'E:/Studia/MGR/MedZoo/data_final_processed/'
-_image_target_size = [192, 192, 64] # H x W x D
+_image_target_size = [192, 192, 64]  # H x W x D
 _min_hu = -250
 _max_hu = 250
+
 
 class MedicalDataset:
 
@@ -32,11 +36,17 @@ class MedicalDataset:
                     if 'ct' in file:
                         image_path = os.path.join(root, file)
                         mask_path = image_path.replace('ct', 'mask')
-                        if Organ.KIDNEY.value in file and Organ.KIDNEY.value in self.organ_list:
+                        if Organ.KIDNEY.value in file:
+                            if not Organ.KIDNEY.value in self.organ_list:
+                                continue
                             task = Organ.KIDNEY
-                        elif Organ.LIVER.value in file and Organ.LIVER.value in self.organ_list:
+                        elif Organ.LIVER.value in file:
+                            if not Organ.LIVER.value in self.organ_list:
+                                continue
                             task = Organ.LIVER
-                        elif Organ.SPLEEN.value in file and Organ.SPLEEN.value in self.organ_list:
+                        elif Organ.SPLEEN.value in file:
+                            if not Organ.SPLEEN.value in self.organ_list:
+                                continue
                             task = Organ.SPLEEN
 
                         self.files.append({
@@ -56,9 +66,12 @@ class MedicalDataset:
         missing_cols = target_size[1] - ct_image.shape[1]
         missing_slices = target_size[2] - ct_image.shape[2]
 
-        if missing_rows < 0: missing_rows = 0
-        if missing_cols < 0: missing_cols = 0
-        if missing_slices < 0: missing_slices = 0
+        if missing_rows < 0:
+            missing_rows = 0
+        if missing_cols < 0:
+            missing_cols = 0
+        if missing_slices < 0:
+            missing_slices = 0
 
         return numpy.pad(ct_image, ((0, missing_rows), (0, missing_cols), (0, missing_slices)), 'constant')
 
@@ -146,16 +159,19 @@ class MedicalDataset:
         if random.random() < 0.9:
             h0 = random.randint(
                 boundary_h_target_min,
-                numpy.max([boundary_h_target_max - self.target_size[0], boundary_h_target_min])
-                )
+                numpy.max([boundary_h_target_max -
+                          self.target_size[0], boundary_h_target_min])
+            )
             w0 = random.randint(
                 boundary_w_target_min,
-                numpy.max([boundary_w_target_max - self.target_size[1], boundary_w_target_min])
-                )
+                numpy.max([boundary_w_target_max -
+                          self.target_size[1], boundary_w_target_min])
+            )
             d0 = random.randint(
                 boundary_d_target_min,
-                numpy.max([boundary_d_target_max - self.target_size[2], boundary_d_target_min])
-                )
+                numpy.max([boundary_d_target_max -
+                          self.target_size[2], boundary_d_target_min])
+            )
         else:
             h0 = random.randint(0, img_h - self.target_size[0])
             w0 = random.randint(0, img_w - self.target_size[1])
@@ -175,8 +191,9 @@ class MedicalDataset:
             return None
 
         shape = mask.shape
-        organ_mask = numpy.zeros((1, shape[0], shape[1], shape[2])).astype(numpy.float32)
-        organ_mask[:, :, :] = numpy.where(organ, 1, 0)
+        organ_mask = numpy.zeros(
+            (shape[0], shape[1], shape[2])).astype(numpy.float32)
+        organ_mask = numpy.where(organ, 1, 0)
 
         return organ_mask
 
@@ -184,21 +201,21 @@ class MedicalDataset:
         return Compose([
             GaussianNoiseTransform(
                 p_per_sample=0.1
-                ),
+            ),
             BrightnessMultiplicativeTransform(
                 multiplier_range=(0.75, 1.25),
                 p_per_sample=0.15
-                ),
+            ),
             BrightnessTransform(
                 mu=0.0,
                 sigma=0.1,
                 per_channel=True,
                 p_per_sample=0.15,
                 p_per_channel=0.5
-                ),
+            ),
             ContrastAugmentationTransform(
                 p_per_sample=0.15
-                ),
+            ),
             SimulateLowResolutionTransform(
                 zoom_range=(.5, 1),
                 per_channel=True,
@@ -207,14 +224,14 @@ class MedicalDataset:
                 order_upsample=3,
                 p_per_sample=0.25,
                 ignore_axes=None
-                ),
+            ),
             GammaTransform(
                 gamma_range=(.7, 1.5),
                 invert_image=False,
                 per_channel=True,
                 retain_stats=True,
                 p_per_sample=0.15
-                )
+            )
         ])
 
     def __len__(self):
@@ -234,52 +251,51 @@ class MedicalDataset:
 
         mask_data = self.add_padding(mask_data, self.target_size)
 
+        image_data = image_data.transpose((2, 1, 0))
+        mask_data = mask_data.transpose((2, 1, 0))
+
         if self.crop_to_mask:
             height, width, depth = self.locate_boundaries(mask_data, index)
-            image_data = image_data[depth[0]:depth[1], height[0]: height[1], width[0]: width[1]]
-            mask_data = mask_data[depth[0]:depth[1], height[0]: height[1], width[0]: width[1]]
+            image_data = image_data[depth[0]:depth[1],
+                                    height[0]: height[1], width[0]: width[1]]
+            mask_data = mask_data[depth[0]:depth[1],
+                                  height[0]: height[1], width[0]: width[1]]
 
         mask_data = self.get_organ_mask(mask_data, task)
 
-        image_data = image_data[numpy.newaxis, :]
+        #image_data = image_data[numpy.newaxis, :]
 
+        image_data = numpy.resize(image_data, (image_data.shape[0], _image_target_size[0], _image_target_size[1]))
+        mask_data = numpy.resize(mask_data, (mask_data.shape[0], _image_target_size[0], _image_target_size[1]))
         image_data = image_data.astype(numpy.float32)
         mask_data = mask_data.astype(numpy.float32)
+        print('image shape: ' + str(image_data.shape))
+        print('mask shape: ' + str(mask_data.shape))
 
         return image_data.copy().astype(numpy.float32), mask_data.copy().astype(numpy.float32), task
 
-    def get_generator(self):
+    def generate_data(self):
         while True:
             shuffled_list = list(range(len(self.files)))
             random.shuffle(shuffled_list)
-            print('start')
+            print('Generate data, epoch start')
 
             for i in range(len(shuffled_list)):
-                print('data')
+                print('Loading example [' + str(shuffled_list[i]) + ']')
                 image, mask, task = self.__getitem__(shuffled_list[i])
-                image = image[0, :, :, :]
-                mask = mask[0, :, :, :]
+                # image = image[0, :, :, :]
+                # mask = mask[0, :, :, :]
                 data = {
                     'data': image,
                     'mask': mask,
                     'task': task
-                    }
+                }
                 transforms = self.get_transforms()
                 data = transforms(**data)
 
-                yield (data['data'], data['mask'])
+                #if self.data3d:
+                yield (data['data'][0:32, :, :], data['mask'][0:32, :, :])
+                #else:
+                 #   for j in range(image.shape[0]):
+                  #      yield (data['data'][j, :, :], data['mask'][j, :, :])
 
-#
-# use example
-#
-
-# a = MedicalDataset()
-# import matplotlib.pyplot as plt
-
-# for ex in a.get_generator():
-#     plt.subplot(1, 2, 1)
-#     plt.imshow(ex['data'][32, :, :])
-#
-#     plt.subplot(1,2,2)
-#     plt.imshow(ex['mask'][32, :, :])
-#     plt.show()
