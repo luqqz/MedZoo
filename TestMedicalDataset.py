@@ -1,5 +1,4 @@
 import os
-from batchgenerators import transforms
 import numpy
 import math
 import nibabel
@@ -9,13 +8,13 @@ import time
 
 from batchgenerators.transforms import *
 
-from utils.edatatype import DataType
-from utils.eorgan import Organ
+from types.edatatype import DataType
+from types.eorgan import Organ
 
-_final_data_processed_path = 'E:/Studia/MGR/MedZoo/data_final_processed/'
+_final_data_processed_path = 'data_final_processed/'
 _image_target_size = [192, 192, 64] # H x W x D
-_min_hu = -325
-_max_hu = 325
+_min_hu = -250
+_max_hu = 250
 
 _spleen_mask = 1
 _kidney_mask = [2, 3]
@@ -23,9 +22,9 @@ _liver_mask = 6
 
 class TestMedicalDataset:
 
-    def __init__(self, data_root_dir=_final_data_processed_path, target_size=_image_target_size, crop_to_mask=False, transform=False):
+    def __init__(self, data_root_dir=_final_data_processed_path, target_size=_image_target_size, data3d=False, transform=False):
         self.target_size = target_size
-        self.crop_to_mask = crop_to_mask
+        self.data3d = data3d
         self.transform = transform
         self.files = []
         self.boundaries = {}

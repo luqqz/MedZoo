@@ -3,6 +3,7 @@ import numpy
 import math
 import nibabel
 import random
+import cv2
 
 from batchgenerators.transforms import *
 
@@ -16,9 +17,11 @@ _max_hu = 250
 
 class MedicalDataset:
 
-    def __init__(self, data_root_dir=_final_data_processed_path, target_size=_image_target_size, crop_to_mask=False, transform=False):
+    def __init__(self, data_root_dir=_final_data_processed_path, target_size=_image_target_size, organ_list=["spleen", "kidney", "liver"], crop_to_mask=True, data3d=False, transform=False):
         self.target_size = target_size
+        self.organ_list = organ_list
         self.crop_to_mask = crop_to_mask
+        self.data3d = data3d
         self.transform = transform
         self.files = []
         self.boundaries = {}
@@ -29,11 +32,11 @@ class MedicalDataset:
                     if 'ct' in file:
                         image_path = os.path.join(root, file)
                         mask_path = image_path.replace('ct', 'mask')
-                        if Organ.KIDNEY.value in file:
+                        if Organ.KIDNEY.value in file and Organ.KIDNEY.value in self.organ_list:
                             task = Organ.KIDNEY
-                        elif Organ.LIVER.value in file:
+                        elif Organ.LIVER.value in file and Organ.LIVER.value in self.organ_list:
                             task = Organ.LIVER
-                        elif Organ.SPLEEN.value in file:
+                        elif Organ.SPLEEN.value in file and Organ.SPLEEN.value in self.organ_list:
                             task = Organ.SPLEEN
 
                         self.files.append({
@@ -235,9 +238,10 @@ class MedicalDataset:
             image_data = image_data.transpose((2, 1, 0))
             mask_data = mask_data.transpose((2, 1, 0))
 
-        height, width, depth = self.locate_boundaries(mask_data, index)
-        image_data = image_data[depth[0]:depth[1], height[0]: height[1], width[0]: width[1]]
-        mask_data = mask_data[depth[0]:depth[1], height[0]: height[1], width[0]: width[1]]
+        if self.crop_to_mask:
+            height, width, depth = self.locate_boundaries(mask_data, index)
+            image_data = image_data[depth[0]:depth[1], height[0]: height[1], width[0]: width[1]]
+            mask_data = mask_data[depth[0]:depth[1], height[0]: height[1], width[0]: width[1]]
 
         mask_data = self.get_organ_mask(mask_data, task)
 
