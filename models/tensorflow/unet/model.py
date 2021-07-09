@@ -1,6 +1,5 @@
 import numpy as np
 import os
-import skimage.transform as trans
 import numpy as np
 from keras.models import *
 from keras.layers import *
@@ -65,7 +64,6 @@ def unet(pretrained_weights = None, input_size = (256, 256, 1)):
     conv10 = Conv2D(1, 1, activation = 'sigmoid')(conv9)
 
     model = Model(inputs = inputs, outputs = conv10)
-
 
     model.compile(optimizer = Adam(lr = 1e-4), loss = dice_loss, metrics = [dice_coefficient])
 
