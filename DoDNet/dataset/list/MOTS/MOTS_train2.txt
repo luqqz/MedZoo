@@ -1,0 +1,5 @@
+0123456_spacing_same/0Liver/imagesTr/liver_1.nii.gz     0123456_spacing_same/0Liver/labelsTr/liver_1.nii.gz
+0123456_spacing_same/0Liver/imagesTr/liver_10.nii.gz     0123456_spacing_same/0Liver/labelsTr/liver_10.nii.gz
+0123456_spacing_same/0Liver/imagesTr/liver_100.nii.gz     0123456_spacing_same/0Liver/labelsTr/liver_100.nii.gz
+0123456_spacing_same/0Liver/imagesTr/liver_101.nii.gz     0123456_spacing_same/0Liver/labelsTr/liver_101.nii.gz
+0123456_spacing_same/0Liver/imagesTr/liver_103.nii.gz     0123456_spacing_same/0Liver/labelsTr/liver_103.nii.gz
